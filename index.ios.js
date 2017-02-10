@@ -16,6 +16,14 @@ import {
   SegmentedControlIOS
 } from 'react-native';
 
+import AWS from 'aws-sdk/global';
+import AWSMqtt from 'aws-mqtt';
+
+AWS.config.region = 'eu-west-1';
+AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+  IdentityPoolId: conf.AWS_POOL_ID
+});
+
 export default class HomeControl extends Component {
   constructor(props) {
     super(props);
@@ -28,6 +36,16 @@ export default class HomeControl extends Component {
         fan: 0
       }
     };
+  }
+
+  componentDidMount() {
+    this.mqttClient = AWSMqtt.connect({
+      WebSocket: WebSocket,
+      region: AWS.config.region,
+      credentials: AWS.config.credentials,
+      endpoint: conf.MQTT_ENDPOINT,
+      clientId: 'mqtt-client-' + (Math.floor((Math.random() * 100000) + 1)), // clientId to register with MQTT broker. Need to be unique per client
+    });
   }
 
   modifyAc( key, value ) {

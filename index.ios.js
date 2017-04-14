@@ -1,9 +1,7 @@
 /**
- * Sample React Native App
- * https://github.com/facebook/react-native
+ * HomeControl app
  * @flow
  */
-
 import React, { Component } from 'react';
 import {
   AppRegistry,
@@ -13,16 +11,13 @@ import {
   StatusBar,
   Slider,
   Switch,
-  SegmentedControlIOS
+  SegmentedControlIOS,
+  Button
 } from 'react-native';
 
-import AWS from 'aws-sdk/global';
-import AWSMqtt from 'aws-mqtt';
-
-AWS.config.region = 'eu-west-1';
-AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-  IdentityPoolId: conf.AWS_POOL_ID
-});
+import { getSignedUrl } from 'aws-signing-utils';
+import AWSCognito from 'react-native-aws-cognito';
+import AWSConfig from './aws.json';
 
 export default class HomeControl extends Component {
   constructor(props) {
@@ -39,13 +34,42 @@ export default class HomeControl extends Component {
   }
 
   componentDidMount() {
-    this.mqttClient = AWSMqtt.connect({
-      WebSocket: WebSocket,
-      region: AWS.config.region,
-      credentials: AWS.config.credentials,
-      endpoint: conf.MQTT_ENDPOINT,
-      clientId: 'mqtt-client-' + (Math.floor((Math.random() * 100000) + 1)), // clientId to register with MQTT broker. Need to be unique per client
-    });
+    console.log(AWSCognito);
+    AWSCognito.setUserPool(
+      AWSConfig.region,
+      AWSConfig.identityPoolId, // Federated identity pool id
+      AWSConfig.clientId, // App client ID
+      AWSConfig.secret, // App client secret - leave this undefined if your app doens't use secret
+      AWSConfig.userPoolId // user pool ID
+    );
+
+    AWSCognito.getSession(AWSConfig.email, AWSConfig.password)
+      .then( tokens => {
+        console.log('tokens:', tokens);
+        return tokens;
+      } )
+      .then( () => AWSCognito.getCredentials(AWSConfig.email) )
+      .then( (credentials) => {
+        console.log('Temporary credentials:');
+        console.log('accessKey', credentials.accessKey);
+        console.log('secretKey', credentials.secretKey);
+        console.log('sessionKey', credentials.sessionKey);
+
+        const endpointUrl = getSignedUrl({
+          method: 'GET',
+          protocol: 'wss',
+          canonicalUri: '/mqtt',
+          service: 'iotdevicegateway',
+          region: AWSConfig.region,
+          secretKey: credentials.secretKey,
+          accessKey: credentials.accessKey,
+          sessionKey: credentials.sessionKey,
+          host: AWSConfig.endpointAddress,
+        });
+
+        console.log("Signed AWS IoT url: ", endpointUrl)
+      } )
+      .catch( err => console.error('Error: ', err) )
   }
 
   modifyAc( key, value ) {

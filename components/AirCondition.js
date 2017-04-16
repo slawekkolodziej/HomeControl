@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import { connect } from 'react-redux';
 import {
   View,
   Switch,
@@ -8,19 +9,6 @@ import {
 } from 'react-native';
 
 export class AirCondition extends Component {
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      ac: {
-        state: 'on',
-        mode: 'auto',
-        temperature: 22,
-        fan: 0
-      }
-    };
-  }
-
   modifyAc( key, value ) {
     this.setState({
       ac: {
@@ -31,9 +19,14 @@ export class AirCondition extends Component {
   }
 
   render () {
-    const { ac } = this.state;
+    const {
+      fan,
+      mode,
+      state,
+      temperature,
+    } = this.props;
 
-    const isAcEnabled = ac.state === 'on';
+    const isAcEnabled = state === 'on';
 
     const acModes = [
       'auto',
@@ -52,27 +45,38 @@ export class AirCondition extends Component {
           step={ 1 }
           minimumValue={ 18 }
           maximumValue={ 30 }
-          value={ ac.temperature }
+          value={ temperature }
           disabled={ !isAcEnabled }
           onValueChange={ value => this.modifyAc( 'temperature', value ) }
         />
         <SegmentedControlIOS
           disabled={ !isAcEnabled }
           values={ acModes }
-          selectedIndex={ acModes.indexOf(ac.mode) }
+          selectedIndex={ acModes.indexOf(mode) }
           onValueChange={ value => this.modifyAc( 'mode', value ) }
         />
 
         <Text>
           Config:{ `\n` }
-          state: { `${ac.state}\n` }
-          mode: { `${ac.mode}\n` }
-          temperature: { `${ac.temperature}\n` }
-          fan: { ac.fan }
+          state: { `${state}\n` }
+          mode: { `${mode}\n` }
+          temperature: { `${temperature}\n` }
+          fan: { fan }
         </Text>
       </View>
     )
   }
 }
 
-export default AirCondition;
+function mapStateToProps( state ) {
+  return {
+    state: state.airCondition.state,
+    mode: state.airCondition.mode,
+    temperature: state.airCondition.temperature,
+    fan: state.airCondition.fan,
+  };
+}
+
+export default connect(
+  mapStateToProps
+)(AirCondition);
